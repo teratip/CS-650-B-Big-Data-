@@ -16,7 +16,7 @@ v3
 v4 <- sqrt(v1)
 v4
 
-# Trying out with some More Variables
+# Trying out with some other Variables
 greet <-"Hello,"
 name <-" Teena"
 message <- paste(greet, name)
