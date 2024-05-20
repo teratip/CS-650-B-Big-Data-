@@ -56,56 +56,96 @@ data <- data.frame(
                    377, 411, 412, 394, 391)
 )
 
+# Remove rows with any missing values
+data_clean <- na.omit(data)
 
-# 1. Linear regression: Critical Reading Mean vs Mathematics Mean
-linear_model <- lm(Critical_Reading_Mean ~ Mathematics_Mean, data = data)
-summary(linear_model)
+# Check for missing values
+missing_rows <- which(rowSums(is.na(data)) > 0)
 
-# Plot Linear Regression
-plot1 <- ggplot(data, aes(x = Mathematics_Mean, y = Critical_Reading_Mean)) +
+# Check for non-finite values in each column
+non_finite_rows <- apply(data, 2, function(x) any(!is.finite(x)))
+
+# Print the column names with non-finite values
+print(names(data)[non_finite_rows])
+
+# 1. Linear regression
+
+# Fit a linear regression model
+model <- lm(Critical_Reading_Mean ~ Mathematics_Mean + Writing_Mean, data = data_clean)
+
+summary(model)
+
+
+# Plot 1: Scatterplot of Critical Reading Mean vs. Mathematics Mean with regression line
+plot1 <- ggplot(data_clean, aes(x = Mathematics_Mean, y = Critical_Reading_Mean)) +
   geom_point() +
-  geom_smooth(method = "lm", col = "blue") +
-  ggtitle("Linear Regression: Critical Reading Mean vs Mathematics Mean")
-print(plot1)
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Critical Reading Mean vs. Mathematics Mean",
+       x = "Mathematics Mean",
+       y = "Critical Reading Mean")
 
-# 2. Polynomial regression: Critical Reading Mean vs Mathematics Mean
-polynomial_model <- lm(Critical_Reading_Mean ~ poly(Mathematics_Mean, 2), data = data)
-summary(polynomial_model)
+plot1
 
-# Plot Polynomial Regression
-plot2 <- ggplot(data, aes(x = Mathematics_Mean, y = Critical_Reading_Mean)) +
+# Plot 2: Scatterplot of Critical Reading Mean vs. Writing Mean with regression line
+plot2 <- ggplot(data_clean, aes(x = Writing_Mean, y = Critical_Reading_Mean)) +
   geom_point() +
-  geom_smooth(method = "lm", formula = y ~ poly(x, 2), col = "red") +
-  ggtitle("Polynomial Regression: Critical Reading Mean vs Mathematics Mean")
-print(plot2)
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Critical Reading Mean vs. Writing Mean",
+       x = "Writing Mean",
+       y = "Critical Reading Mean")
 
-# 3. Logistic regression: Binarizing Critical Reading Mean and predicting based on Mathematics Mean
-# Create a binary variable for Critical_Reading_Mean
-data$High_Critical_Reading <- ifelse(data$Critical_Reading_Mean > 400, 1, 0)
+plot2
 
-logistic_model <- glm(High_Critical_Reading ~ Mathematics_Mean, data = data, family = binomial)
-summary(logistic_model)
 
-# Plot Logistic Regression
-plot3 <- ggplot(data, aes(x = Mathematics_Mean, y = High_Critical_Reading)) +
-  geom_point() +
-  stat_smooth(method = "glm", method.args = list(family = "binomial"), col = "green") +
-  ggtitle("Logistic Regression: High Critical Reading Mean vs Mathematics Mean")
-print(plot3)
 
-# Additional Plots
+# 2. Polynomial Regression
 
-# 4. Scatter plot: Number of Test Takers vs Critical Reading Mean
-plot4 <- ggplot(data, aes(x = Number_of_Test_Takers, y = Critical_Reading_Mean)) +
-  geom_point() +
-  ggtitle("Scatter Plot: Number of Test Takers vs Critical Reading Mean")
-print(plot4)
 
-# 5. Histogram of Critical Reading Mean
-plot5 <- ggplot(data, aes(x = Critical_Reading_Mean)) +
-  geom_histogram(binwidth = 20, fill = "blue", color = "black") +
-  ggtitle("Histogram of Critical Reading Mean")
-print(plot5)
+# Plot 1
+# Perform polynomial regression for Critical Reading Mean and Writing Mean
+poly_reg <- lm(Writing_Mean ~ poly(Critical_Reading_Mean, 2), data = data_clean)
+predictions <- predict(poly_reg)
 
+# Sort the data for smoother plotting
+sorted_data <- data_clean[order(data_clean$Critical_Reading_Mean), ]
+
+# Plot polynomial regression
+plot(data_clean$Critical_Reading_Mean, data_clean$Writing_Mean, main = "Polynomial Regression", xlab = "Critical Reading Mean", ylab = "Writing Mean")
+lines(sorted_data$Critical_Reading_Mean, predictions[order(data_clean$Critical_Reading_Mean)], col = "red", lw = 2)
+
+
+
+# Plot 2
+# Perform polynomial regression for Mathematics Mean and Writing Mean
+poly_reg_another <- lm(Writing_Mean ~ poly(Mathematics_Mean, 2), data = data_clean)
+predictions_another <- predict(poly_reg_another)
+
+# Plot polynomial regression 
+plot(data_clean$Mathematics_Mean, data_clean$Writing_Mean, main = "Polynomial Regression (Another Variable)", xlab = "Mathematics Mean", ylab = "Writing Mean")
+lines(sort(data_clean$Mathematics_Mean), predictions_another[order(data_clean$Mathematics_Mean)], col = "blue", lw = 2)
+
+
+
+
+
+# 3. Logistic Regression
+
+# Create a binary response variable based on "Number_of_Test_Takers"
+data_clean$Binary_Response <- ifelse(data_clean$Number_of_Test_Takers >= 50, 1, 0)
+
+# Perform logistic regression
+log_reg <- glm(Binary_Response ~ Critical_Reading_Mean + Mathematics_Mean + Writing_Mean, 
+               data = data_clean, family = binomial)
+
+summary(log_reg)
+
+# Plot the logistic regression curve
+plot(data_clean$Writing_Mean, data_clean$Binary_Response, 
+     xlab = "Writing Mean", ylab = "Binary Response", 
+     main = "Logistic Regression Plot")
+
+# Add logistic regression curve to the plot
+curve(predict(log_reg, newdata = data.frame(Critical_Reading_Mean = x, Mathematics_Mean = x, Writing_Mean = x), type = "response"), 
+      add = TRUE, col = "blue")
 
 
